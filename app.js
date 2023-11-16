@@ -4,6 +4,32 @@ const fs = require("fs");
 
 const app = express();
 
+app.use((req, res, next) => {
+  try {
+    fs.readFile("./log.json", (err, data) => {
+      const log = JSON.parse(data);
+      console.log(log);
+      log.use = log.use + 1;
+      const newData = JSON.stringify(log);
+      fs.writeFile("./log.json", newData, (err) => {
+        if (err) {
+          console.log(err);
+        }
+      });
+    });
+    next();
+  } catch (error) {
+    console.log(error);
+    next();
+  }
+});
+
+app.get("/logs", (req, res) => {
+  const logJson = fs.readFileSync("./log.json");
+  const log = JSON.parse(logJson);
+  res.status(200).json(log);
+});
+
 app.get("/search/movie/:qmovie/:page?", async (req, res) => {
   try {
     const movie = req.params.qmovie;
