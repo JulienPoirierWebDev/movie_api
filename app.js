@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const fs = require("fs");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 const searchRouter = require("./routes/searchRouter");
 const infosRouter = require("./routes/infosRouter");
@@ -32,6 +33,28 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
+const verifyToken = (req, res, next) => {
+  const authorizationHeaders = req.headers.authorization;
+
+  const token = authorizationHeaders.split(" ")[1];
+
+  console.log(token);
+
+  if (!token) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, decodedToken) => {
+    if (err) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    next();
+  });
+};
+
 app.use((req, res, next) => {
   if (req.url === "/logs") {
     next();
@@ -59,6 +82,10 @@ app.use((req, res, next) => {
     console.log(error);
     next();
   }
+});
+
+app.get("/protected", verifyToken, (req, res) => {
+  res.status(200).json({ message: "Welcome to the protected route" });
 });
 
 app.get("/logs", async (req, res) => {
@@ -124,7 +151,11 @@ app.post("/users/login", async (req, res) => {
     return;
   }
 
-  res.status(200).json({ message: "User logged in" });
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: "1h",
+  });
+
+  res.status(200).json({ message: "User logged in", token: token });
 });
 
 app.use("/search", searchRouter);
