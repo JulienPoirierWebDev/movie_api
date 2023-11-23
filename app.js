@@ -102,6 +102,31 @@ app.post("/users/register", async (req, res) => {
   res.status(201).json({ message: "User created" });
 });
 
+app.post("/users/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    res.status(400).json({ message: "Missing parameters" });
+    return;
+  }
+
+  const user = await User.findOne({ email: email }).exec();
+
+  if (!user) {
+    res.status(400).json({ message: "User not found" });
+    return;
+  }
+
+  const isPasswordValid = await bcrypt.compare(password, user.hashPassword);
+
+  if (!isPasswordValid) {
+    res.status(400).json({ message: "Invalid password" });
+    return;
+  }
+
+  res.status(200).json({ message: "User logged in" });
+});
+
 app.use("/search", searchRouter);
 
 app.use("/infos", infosRouter);
