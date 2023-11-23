@@ -3,6 +3,8 @@ const express = require("express");
 const fs = require("fs");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const session = require("express-session");
+const connectMongo = require("connect-mongo");
 
 const searchRouter = require("./routes/searchRouter");
 const infosRouter = require("./routes/infosRouter");
@@ -33,10 +35,25 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
-const verifyToken = (req, res, next) => {
-  const authorizationHeaders = req.headers.authorization;
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+    httpOnly: true,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 1000 * 60 * 60 * 24,
+    },
+    store: connectMongo.create({
+      mongoUrl: process.env.MONGO_URL,
+    }),
+  })
+);
 
-  const token = authorizationHeaders.split(" ")[1];
+const verifyToken = (req, res, next) => {
+  const token = req.session.jwt;
+  console.log(req.session);
 
   console.log(token);
 
@@ -154,6 +171,9 @@ app.post("/users/login", async (req, res) => {
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
     expiresIn: "1h",
   });
+
+  req.session.jwt = token;
+  req.session.id = user._id;
 
   res.status(200).json({ message: "User logged in", token: token });
 });
