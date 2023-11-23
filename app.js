@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const fs = require("fs");
+const bcrypt = require("bcrypt");
 
 const searchRouter = require("./routes/searchRouter");
 const infosRouter = require("./routes/infosRouter");
@@ -26,18 +27,10 @@ databaseConnection();
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true },
-  hash_password: String,
+  hashPassword: String,
 });
 
 const User = mongoose.model("User", userSchema);
-
-const myUser = new User({
-  name: "Julien",
-  email: "test@hotmail.com",
-  hash_password: "1234",
-});
-
-myUser.save();
 
 app.use((req, res, next) => {
   if (req.url === "/logs") {
@@ -95,10 +88,13 @@ app.post("/users/register", async (req, res) => {
     return;
   }
 
+  const saltRound = 10;
+  const hashPassword = await bcrypt.hash(password, saltRound);
+
   const newUser = new User({
     name,
     email,
-    hash_password: password,
+    hashPassword: hashPassword,
   });
 
   newUser.save();
