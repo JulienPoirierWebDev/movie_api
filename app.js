@@ -5,17 +5,29 @@ const fs = require("fs");
 const app = express();
 
 app.use((req, res, next) => {
+  console.log(req.url);
+
+  if (req.url === "/logs") {
+    next();
+    return;
+  }
+
+  function writeLog(newLog) {
+    fs.writeFile("./log.json", newLog, (err) => {
+      if (err) {
+        console.log(err);
+      }
+    });
+  }
+
   try {
     fs.readFile("./log.json", (err, data) => {
       const log = JSON.parse(data);
       console.log(log);
       log.use = log.use + 1;
       const newData = JSON.stringify(log);
-      fs.writeFile("./log.json", newData, (err) => {
-        if (err) {
-          console.log(err);
-        }
-      });
+
+      writeLog(newData);
     });
     next();
   } catch (error) {
@@ -24,20 +36,23 @@ app.use((req, res, next) => {
   }
 });
 
-app.get("/logs", (req, res) => {
-  const logJson = fs.readFileSync("./log.json");
-  const log = JSON.parse(logJson);
-  res.status(200).json(log);
+app.get("/logs", async (req, res) => {
+  fs.readFile("./log.json", (err, data) => {
+    if (err) {
+      console.log(err);
+    }
+    const log = JSON.parse(data);
+    res.status(200).json(log);
+  });
 });
 
-app.get("/search/movie/:qmovie/:page?", async (req, res) => {
+app.get("/search/movies/:qmovie/:page?", async (req, res) => {
   try {
     const movie = req.params.qmovie;
     const page = req.params.page;
     const TOKEN = process.env.TMDB_TOKEN;
-    const url = `https://api.themoviedb.org/3/search/movie?include_adult=false&language=fr-FR&page=${
-      page ? page : 1
-    }&query=${movie}`;
+    const urlPage = page ? page : 1;
+    const url = `https://api.themoviedb.org/3/search/movie?include_adult=false&language=fr-FR&page=${urlPage}&query=${movie}`;
     const options = {
       method: "GET",
       headers: {
@@ -55,11 +70,13 @@ app.get("/search/movie/:qmovie/:page?", async (req, res) => {
   }
 });
 
-app.get("/search/serie/:q", async (req, res) => {
+app.get("/search/series/:q/:page?", async (req, res) => {
   try {
     const serie = req.params.q;
+    const page = req.params.page;
+    const urlPage = page ? page : 1;
     const TOKEN = process.env.TMDB_TOKEN;
-    const url = `https://api.themoviedb.org/3/search/tv?include_adult=false&language=fr-FR&page=1&query=${serie}`;
+    const url = `https://api.themoviedb.org/3/search/tv?include_adult=false&language=fr-FR&page=${urlPage}&query=${serie}`;
     const options = {
       method: "GET",
       headers: {
@@ -77,7 +94,7 @@ app.get("/search/serie/:q", async (req, res) => {
   }
 });
 
-app.get("/infos/movie/:id", async (req, res) => {
+app.get("/infos/movies/:id", async (req, res) => {
   try {
     const id = req.params.id;
     const TOKEN = process.env.TMDB_TOKEN;
@@ -98,7 +115,7 @@ app.get("/infos/movie/:id", async (req, res) => {
   }
 });
 
-app.get("/infos/serie/:id", async (req, res) => {
+app.get("/infos/series/:id", async (req, res) => {
   try {
     const id = req.params.id;
     const TOKEN = process.env.TMDB_TOKEN;
@@ -119,7 +136,7 @@ app.get("/infos/serie/:id", async (req, res) => {
   }
 });
 
-app.get("/infos/collection/:id", async (req, res) => {
+app.get("/infos/collections/:id", async (req, res) => {
   try {
     const id = req.params.id;
     const TOKEN = process.env.TMDB_TOKEN;
@@ -134,6 +151,7 @@ app.get("/infos/collection/:id", async (req, res) => {
 
     const response = await fetch(url, options);
     const request = await response.json();
+    res.status(200).json(request);
   } catch (err) {
     console.log(err);
     res.status(500).send("Error while getting the movies");
