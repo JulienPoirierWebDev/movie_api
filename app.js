@@ -3,6 +3,7 @@ const express = require("express");
 const fs = require("fs");
 
 const searchRouter = require("./routes/searchRouter");
+const infosRouter = require("./routes/infosRouter");
 
 const app = express();
 
@@ -50,69 +51,7 @@ app.get("/logs", async (req, res) => {
 
 app.use("/search", searchRouter);
 
-app.get("/infos/movies/:id", async (req, res) => {
-  try {
-    const id = req.params.id;
-    const TOKEN = process.env.TMDB_TOKEN;
-    const url = `https://api.themoviedb.org/3/movie/${id}?language=fr-FR`;
-    const options = {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        Authorization: `Bearer ${TOKEN}`,
-      },
-    };
-
-    const response = await fetch(url, options);
-    const request = await response.json();
-    res.status(200).json(request);
-  } catch (err) {
-    res.status(500).send("Error while getting the movies");
-  }
-});
-
-app.get("/infos/series/:id", async (req, res) => {
-  try {
-    const id = req.params.id;
-    const TOKEN = process.env.TMDB_TOKEN;
-    const url = `https://api.themoviedb.org/3/tv/${id}?language=fr-FR`;
-    const options = {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        Authorization: `Bearer ${TOKEN}`,
-      },
-    };
-
-    const response = await fetch(url, options);
-    const request = await response.json();
-    res.status(200).json(request);
-  } catch (err) {
-    res.status(500).send("Error while getting the movies");
-  }
-});
-
-app.get("/infos/collections/:id", async (req, res) => {
-  try {
-    const id = req.params.id;
-    const TOKEN = process.env.TMDB_TOKEN;
-    const url = `https://api.themoviedb.org/3/collection/${id}?language=fr-FR`;
-    const options = {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        Authorization: `Bearer ${TOKEN}`,
-      },
-    };
-
-    const response = await fetch(url, options);
-    const request = await response.json();
-    res.status(200).json(request);
-  } catch (err) {
-    console.log(err);
-    res.status(500).send("Error while getting the movies");
-  }
-});
+app.use("/infos", infosRouter);
 
 app.use((req, res) => {
   res.status(404).send("Page not found");
