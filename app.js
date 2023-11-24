@@ -10,6 +10,12 @@ const searchRouter = require("./routes/searchRouter");
 const infosRouter = require("./routes/infosRouter");
 const loggerMiddleware = require("./middlewares/loggerMiddleware");
 const sessionMiddleware = require("./middlewares/sessionMiddleware");
+const {
+  requestOneMovieFromTMDBApi,
+} = require("./services/movieDatabase.api.js");
+
+const List = require("./models/ListModel");
+const Movie = require("./models/MovieModel");
 
 const verifyToken = require("./middlewares/verifyToken.js");
 
@@ -34,6 +40,152 @@ app.get("/logs", async (req, res) => {
     const log = JSON.parse(data);
     res.status(200).json(log);
   });
+});
+
+const verifyAndAddMovie = async (req, res, next) => {
+  try {
+    const { movieId } = req.body;
+
+    if (!movieId) {
+      res.status(400).json({ message: "Missing parameters" });
+      return;
+    }
+
+    let movie = await Movie.findOne({ id: movieId }).exec();
+
+    if (!movie) {
+      console.log("Movie not found");
+
+      const movieFromTMDB = await requestOneMovieFromTMDBApi(movieId);
+
+      if (movieFromTMDB.error) {
+        res.status(400).json({ message: "Movie not found" });
+        return;
+      }
+
+      movie = new Movie({
+        id: movieFromTMDB.id,
+        title: movieFromTMDB.title,
+        originalTitle: movieFromTMDB.original_title,
+        poster:
+          "https://image.tmdb.org/t/p/original/" + movieFromTMDB.poster_path,
+        backdrop:
+          "https://image.tmdb.org/t/p/original/" + movieFromTMDB.backdrop_path,
+        releaseDate: movieFromTMDB.release_date,
+        overview: movieFromTMDB.overview,
+        rate: movieFromTMDB.vote_average,
+      });
+
+      await movie.save();
+    }
+
+    req.movie = movie;
+
+    next();
+  } catch (error) {
+    res.status(500).json({ message: "Error in middleware verifyAndAddMovie" });
+  }
+};
+
+app.get("/collection", verifyToken, async (req, res) => {
+  try {
+    const user = req.user;
+
+    const listUser = await List.findOne({ user: user.id })
+      .populate("movies")
+      .exec();
+
+    if (!listUser) {
+      res.status(400).json({ message: "List not found" });
+      return;
+    }
+
+    res.status(200).json(listUser);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Error" });
+  }
+});
+
+app.post(
+  "/collection/add",
+  verifyToken,
+  verifyAndAddMovie,
+  async (req, res) => {
+    try {
+      const user = req.user;
+
+      let listUser = await List.findOne({ user: user.id }).exec();
+
+      if (!listUser) {
+        const newList = new List({
+          name: "My collection",
+          user: user.id,
+        });
+
+        listUser = await newList.save();
+      }
+
+      const movie = req.movie;
+
+      const isMovieAlreadyInCollection = listUser.movies.includes(
+        movie._id.toString()
+      );
+
+      if (isMovieAlreadyInCollection) {
+        res.status(400).json({ message: "Movie already in collection" });
+        return;
+      }
+
+      listUser.movies.push(movie._id.toString());
+
+      await listUser.save();
+
+      res.status(200).json({ message: "Movie added to collection", listUser });
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ message: "Error" });
+    }
+  }
+);
+
+app.post("/collection/remove", verifyToken, async (req, res) => {
+  try {
+    const user = req.user;
+    const { movieId } = req.body;
+
+    if (!movieId) {
+      res.status(400).json({ message: "Missing parameters" });
+      return;
+    }
+
+    const listUser = await List.findOne({ user: user.id })
+      .populate("movies")
+      .exec();
+
+    if (!listUser) {
+      res.status(400).json({ message: "List not found" });
+      return;
+    }
+
+    const movieInListUser = listUser.movies.filter((movie) => {
+      return movie.id === movieId;
+    });
+
+    if (movieInListUser.length === 0) {
+      res.status(400).json({ message: "Movie not found in list" });
+      return;
+    }
+
+    listUser.movies.splice(movieInListUser, 1);
+
+    await listUser.save();
+
+    res.status(200).json({ message: "Movie removed from collection" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Error" });
+  }
 });
 
 app.post("/users/register", async (req, res) => {
