@@ -17,7 +17,9 @@ const loggerMiddleware = (req, res, next) => {
 
   try {
     fs.readFile("./log.json", (err, data) => {
-      const log = JSON.parse(data);
+      const log = data
+        ? JSON.parse(data)
+        : { use: 0, moviesSearch: 0, seriesSearch: 0 };
       log.use = log.use + 1;
       switch (req.url) {
         case "/search/movies":
