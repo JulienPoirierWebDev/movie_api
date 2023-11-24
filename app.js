@@ -3,103 +3,24 @@ const express = require("express");
 const fs = require("fs");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const session = require("express-session");
-const connectMongo = require("connect-mongo");
 
+const databaseConnection = require("./utils/mongo_db");
+const User = require("./models/UserModel");
 const searchRouter = require("./routes/searchRouter");
 const infosRouter = require("./routes/infosRouter");
+const loggerMiddleware = require("./middlewares/loggerMiddleware");
+const sessionMiddleware = require("./middlewares/sessionMiddleware");
+
+const verifyToken = require("./middlewares/verifyToken.js");
 
 const app = express();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
-const mongoose = require("mongoose");
-
-const databaseConnection = async () => {
-  try {
-    await mongoose.connect("mongodb://localhost:27017/movies_api");
-    console.log("Success to connect MongoDB");
-  } catch (error) {
-    console.log("Failed to connect MongoDB");
-    console.log(error);
-  }
-};
-
 databaseConnection();
 
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true },
-  hashPassword: String,
-});
-
-const User = mongoose.model("User", userSchema);
-
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true,
-    httpOnly: true,
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 1000 * 60 * 60 * 24,
-    },
-    store: connectMongo.create({
-      mongoUrl: process.env.MONGO_URL,
-    }),
-  })
-);
-
-const verifyToken = (req, res, next) => {
-  const token = req.session.jwt;
-  console.log(req.session);
-
-  console.log(token);
-
-  if (!token) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, decodedToken) => {
-    if (err) {
-      res.status(401).json({ message: "Unauthorized" });
-      return;
-    }
-
-    next();
-  });
-};
-
-app.use((req, res, next) => {
-  if (req.url === "/logs") {
-    next();
-    return;
-  }
-
-  function writeLog(newLog) {
-    fs.writeFile("./log.json", newLog, (err) => {
-      if (err) {
-        console.log(err);
-      }
-    });
-  }
-
-  try {
-    fs.readFile("./log.json", (err, data) => {
-      const log = JSON.parse(data);
-      log.use = log.use + 1;
-      const newData = JSON.stringify(log);
-
-      writeLog(newData);
-    });
-    next();
-  } catch (error) {
-    console.log(error);
-    next();
-  }
-});
+app.use(sessionMiddleware);
+app.use(loggerMiddleware);
 
 app.get("/protected", verifyToken, (req, res) => {
   res.status(200).json({ message: "Welcome to the protected route" });
