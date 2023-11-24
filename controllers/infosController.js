@@ -1,10 +1,10 @@
-const { requestMovieFromTMDBApi } = require("../services/movieDatabase.api");
+const { requestOneMovieFromTMDBApi } = require("../services/movieDatabase.api");
 
 const getInfosOfMovie = async (req, res) => {
   try {
     const id = req.params.id;
 
-    const movie = await requestMovieFromTMDBApi(id);
+    const movie = await requestOneMovieFromTMDBApi(id);
 
     res.status(200).json(movie);
   } catch (err) {

@@ -1,18 +1,22 @@
-const requestMovieFromTMDBApi = async (id) => {
-  const TOKEN = process.env.TMDB_TOKEN;
-  const url = `https://api.themoviedb.org/3/movie/${id}?language=fr-FR`;
-  const options = {
-    method: "GET",
-    headers: {
-      accept: "application/json",
-      Authorization: `Bearer ${TOKEN}`,
-    },
-  };
+const requestOneMovieFromTMDBApi = async (id) => {
+  try {
+    const TOKEN = process.env.TMDB_TOKEN;
+    const url = `https://api.themoviedb.org/3/movie/${id}?language=fr-FR`;
+    const options = {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        Authorization: `Bearer ${TOKEN}`,
+      },
+    };
 
-  const response = await fetch(url, options);
-  const request = await response.json();
+    const response = await fetch(url, options);
+    const request = await response.json();
 
-  return request;
+    return request;
+  } catch (error) {
+    return { error: error.message };
+  }
 };
 
 const requestSearchMovieFromTMDBApi = async (page, search) => {
@@ -32,4 +36,7 @@ const requestSearchMovieFromTMDBApi = async (page, search) => {
   return request;
 };
 
-module.exports = { requestMovieFromTMDBApi, requestSearchMovieFromTMDBApi };
+module.exports = {
+  requestOneMovieFromTMDBApi,
+  requestSearchMovieFromTMDBApi,
+};
