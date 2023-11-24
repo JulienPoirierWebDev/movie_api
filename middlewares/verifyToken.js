@@ -1,6 +1,7 @@
+const jwt = require("jsonwebtoken");
+
 const verifyToken = (req, res, next) => {
   const token = req.session.jwt;
-  console.log(req.session);
 
   if (!token) {
     res.status(401).json({ message: "Unauthorized" });
@@ -12,6 +13,8 @@ const verifyToken = (req, res, next) => {
       res.status(401).json({ message: "Unauthorized" });
       return;
     }
+
+    req.user = decodedToken;
 
     next();
   });
